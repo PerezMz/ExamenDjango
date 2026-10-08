@@ -1,0 +1,59 @@
+{% extends 'casos/base.html' %}
+
+{% block contenido %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Listado de Casos</h2>
+    
+    <!-- Formulario de filtro por GET -->
+    <form method="GET" class="d-flex align-items-center gap-2">
+        <label for="estado" class="form-label mb-0 fw-bold">Filtrar por Estado:</label>
+        <select name="estado" id="estado" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">-- Todos los estados --</option>
+            {% for est in estados %}
+                <option value="{{ est.id }}" {% if estado_seleccionado == est.id %}selected{% endif %}>
+                    {{ est.nombre }}
+                </option>
+            {% endfor %}
+        </select>
+        {% if estado_seleccionado %}
+            <a href="{% url 'lista_casos' %}" class="btn btn-sm btn-outline-secondary">Limpiar</a>
+        {% endif %}
+    </form>
+</div>
+
+<div class="row">
+    {% for caso in casos %}
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                <span class="fw-bold">Código: {{ caso.codigo }}</span>
+                <span class="badge bg-info text-dark">{{ caso.estado.nombre }}</span>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">{{ caso.titulo }}</h5>
+                <p class="card-text mb-1"><strong>Cliente:</strong> {{ caso.cliente.nombres }}</p>
+                <p class="card-text mb-1">
+                    <strong>Abogados asignados:</strong><br>
+                    {% for abog in caso.abogados.all %}
+                        <span class="badge bg-light text-dark border me-1">- {{ abog.user.get_full_name|default:abog.user.username }}</span>
+                    {% empty %}
+                        <em class="text-muted">Sin abogados asignados</em>
+                    {% endfor %}
+                </p>
+                <p class="card-text mt-2">
+                    <strong>Total Pagado:</strong> S/ {{ caso.total_pagado|floatformat:2 }}
+                </p>
+            </div>
+            <div class="card-footer bg-transparent d-flex justify-content-between">
+                <a href="{% url 'detalle_caso' caso.id %}" class="btn btn-outline-primary btn-sm">Ver Detalle</a>
+                <a href="{% url 'api_caso' caso.id %}" target="_blank" class="btn btn-outline-dark btn-sm">Ver JSON (API)</a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center text-muted py-5">
+        <h4>No hay casos registrados para este estado.</h4>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

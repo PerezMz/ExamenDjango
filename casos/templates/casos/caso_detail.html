@@ -1,0 +1,131 @@
+{% extends 'casos/base.html' %}
+
+{% block contenido %}
+<div class="mb-3 d-flex justify-content-between">
+    <a href="{% url 'lista_casos' %}" class="btn btn-secondary btn-sm">&laquo; Volver al listado</a>
+    <a href="{% url 'api_caso' caso.id %}" target="_blank" class="btn btn-info btn-sm text-white">Ver API JSON</a>
+</div>
+
+<!-- Alerta de Error de Pago Rechazado -->
+{% if error_pago %}
+    <div class="alert alert-danger alert-dismissible fade show fw-bold mb-4" role="alert">
+        ⚠️ {{ error_pago }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+{% endif %}
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-dark text-white">
+        <h3 class="mb-0">Caso [{{ caso.codigo }}]: {{ caso.titulo }}</h3>
+    </div>
+    <div class="card-body">
+        <p><strong>Cliente:</strong> {{ caso.cliente.nombres }} ({{ caso.cliente.documento }})</p>
+        <p><strong>Estado:</strong> <span class="badge bg-primary">{{ caso.estado.nombre }}</span></p>
+        <p><strong>Fecha de inicio:</strong> {{ caso.fecha_inicio|date:"d/m/Y" }}</p>
+        <p><strong>Descripción:</strong> {{ caso.descripcion }}</p>
+
+        {% if not caso.estado.permite_pagos %}
+            <div class="alert alert-warning fw-bold mt-3 mb-0">
+                Este caso no admite pagos.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <!-- SECCIÓN EXPEDIENTES Y SUBIDA DE DOCUMENTOS -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">Expedientes Asociados</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush mb-3">
+                    {% for exp in caso.expedientes.all %}
+                        <li class="list-group-item">
+                            <strong>N° {{ exp.numero }}</strong> - {{ exp.juzgado }}<br>
+                            <small class="text-muted">Presentado el: {{ exp.fecha_presentacion|date:"d/m/Y" }}</small><br>
+                            {% if exp.documento %}
+                                <a href="{{ exp.documento.url }}" target="_blank" class="btn btn-sm btn-outline-success mt-1">
+                                    📄 Ver Documento Adjunto
+                                </a>
+                            {% else %}
+                                <small class="text-muted"><em>Sin documento adjunto</em></small>
+                            {% if exp.documento %}{% endif %}
+                            {% endif %}
+                        </li>
+                    {% empty %}
+                        <li class="list-group-item text-muted">No hay expedientes registrados.</li>
+                    {% endfor %}
+                </ul>
+
+                <!-- Formulario multipart para subir expediente/documento -->
+                <div class="border p-3 rounded bg-light">
+                    <h6 class="fw-bold mb-2">Subir Nuevo Expediente / Documento</h6>
+                    <form method="POST" action="{% url 'subir_expediente' caso.id %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="mb-2">
+                            <input type="text" name="numero" class="form-control form-control-sm" placeholder="N° Expediente" required>
+                        </div>
+                        <div class="mb-2">
+                            <input type="text" name="juzgado" class="form-control form-control-sm" placeholder="Juzgado" required>
+                        </div>
+                        <div class="mb-2">
+                            <input type="date" name="fecha_presentacion" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small mb-1">Adjuntar Archivo:</label>
+                            <input type="file" name="documento" class="form-control form-control-sm" required>
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-secondary w-100 mt-2">Guardar Expediente</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECCIÓN PAGOS Y REGISTRO DE PAGO -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Historial de Pagos</h5>
+                <span class="fw-bold">Total: S/ {{ caso.total_pagado|floatformat:2 }}</span>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush mb-3">
+                    {% for pago in caso.pagos.all %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>S/ {{ pago.monto|floatformat:2 }}</strong><br>
+                                <small class="text-muted">{{ pago.descripcion }}</small>
+                            </div>
+                            <small class="text-muted">{{ pago.fecha|date:"d/m/Y" }}</small>
+                        </li>
+                    {% empty %}
+                        <li class="list-group-item text-muted">No se registran pagos para este caso.</li>
+                    {% endfor %}
+                </ul>
+
+                <!-- Formulario POST para registrar pago -->
+                <div class="border p-3 rounded bg-light">
+                    <h6 class="fw-bold mb-2">Registrar Nuevo Pago</h6>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="registrar_pago" value="1">
+                        <div class="mb-2">
+                            <input type="number" step="0.01" name="monto" class="form-control form-control-sm" placeholder="Monto (ej: 1500.00)" required>
+                        </div>
+                        <div class="mb-2">
+                            <input type="text" name="descripcion" class="form-control form-control-sm" placeholder="Descripción del pago" required>
+                        </div>
+                        <div class="mb-2">
+                            <input type="date" name="fecha" class="form-control form-control-sm" required>
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-success w-100 mt-2">Registrar Pago</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
